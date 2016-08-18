@@ -41,6 +41,9 @@
     } : function(object, prototype) {
         for (var property in prototype) object[property] = prototype[property];
     };
+    d3.selection = function() {
+        return d3.select(d3_document.documentElement);
+    };
     var d3_selectionPrototype = d3.selection.prototype = [];
     function d3_selection_selector(selector) {
         return typeof selector === "function" ? selector : function() {
@@ -238,6 +241,69 @@
         };
         return arc;
     };
+    function d3_class(ctor, properties) {
+        for (var key in properties) {
+            Object.defineProperty(ctor.prototype, key, {
+                value: properties[key],
+                enumerable: false
+            });
+        }
+    }
+    d3_class(d3_Map, {
+        has: d3_map_has,
+        get: function(key) {
+            return this._[d3_map_escape(key)];
+        },
+        set: function(key, value) {
+            return this._[d3_map_escape(key)] = value;
+        },
+        remove: d3_map_remove,
+        keys: d3_map_keys,
+        values: function() {
+            var values = [];
+            for (var key in this._) values.push(this._[key]);
+            return values;
+        },
+        entries: function() {
+            var entries = [];
+            for (var key in this._) entries.push({
+                key: d3_map_unescape(key),
+                value: this._[key]
+            });
+            return entries;
+        },
+        size: d3_map_size,
+        empty: d3_map_empty,
+        forEach: function(f) {
+            for (var key in this._) f.call(this, d3_map_unescape(key), this._[key]);
+        }
+    });
+    d3.map = function(object, f) {
+        var map = new d3_Map();
+        if (object instanceof d3_Map) {
+            object.forEach(function(key, value) {
+                map.set(key, value);
+            });
+        } else if (Array.isArray(object)) {
+            var i = -1, n = object.length, o;
+            if (arguments.length === 1) while (++i < n) map.set(i, object[i]); else while (++i < n) map.set(f.call(object, o = object[i], i), o);
+        } else {
+            for (var key in object) map.set(key, object[key]);
+        }
+        return map;
+    };
+    function d3_Map() {
+        this._ = Object.create(null);
+    }
+    var d3_selection_onFilters = d3.map({
+        mouseenter: "mouseover",
+        mouseleave: "mouseout"
+    });
+    if (d3_document) {
+        d3_selection_onFilters.forEach(function(k) {
+            if ("on" + k in d3_document) d3_selection_onFilters.remove(k);
+        });
+    }
     var d3_svg_lineInterpolators = d3.map({
         linear: d3_svg_lineLinear,
         "linear-closed": d3_svg_lineLinearClosed,
@@ -252,6 +318,10 @@
         "cardinal-open": d3_svg_lineCardinalOpen,
         "cardinal-closed": d3_svg_lineCardinalClosed,
         monotone: d3_svg_lineMonotone
+    });
+    d3_svg_lineInterpolators.forEach(function(key, value) {
+        value.key = key;
+        value.closed = /-closed$/.test(key);
     });
     function d3_svg_lineLinearClosed(points) {
         return points.join("L") + "Z";
@@ -494,14 +564,6 @@
     d3.svg.line = function() {
         return d3_svg_line(d3_identity);
     };
-    function d3_class(ctor, properties) {
-        for (var key in properties) {
-            Object.defineProperty(ctor.prototype, key, {
-                value: properties[key],
-                enumerable: false
-            });
-        }
-    }
     function d3_map_has(key) {
         return d3_map_escape(key) in this._;
     }
@@ -537,35 +599,6 @@
     function d3_Set() {
         this._ = Object.create(null);
     }
-    d3_class(d3_Map, {
-        has: d3_map_has,
-        get: function(key) {
-            return this._[d3_map_escape(key)];
-        },
-        set: function(key, value) {
-            return this._[d3_map_escape(key)] = value;
-        },
-        remove: d3_map_remove,
-        keys: d3_map_keys,
-        values: function() {
-            var values = [];
-            for (var key in this._) values.push(this._[key]);
-            return values;
-        },
-        entries: function() {
-            var entries = [];
-            for (var key in this._) entries.push({
-                key: d3_map_unescape(key),
-                value: this._[key]
-            });
-            return entries;
-        },
-        size: d3_map_size,
-        empty: d3_map_empty,
-        forEach: function(f) {
-            for (var key in this._) f.call(this, d3_map_unescape(key), this._[key]);
-        }
-    });
     function d3_identity(d) {
         return d;
     }
@@ -1021,23 +1054,6 @@
         var f = parseFloat(c);
         return c.charAt(c.length - 1) === "%" ? Math.round(f * 2.55) : f;
     }
-    function d3_Map() {
-        this._ = Object.create(null);
-    }
-    d3.map = function(object, f) {
-        var map = new d3_Map();
-        if (object instanceof d3_Map) {
-            object.forEach(function(key, value) {
-                map.set(key, value);
-            });
-        } else if (Array.isArray(object)) {
-            var i = -1, n = object.length, o;
-            if (arguments.length === 1) while (++i < n) map.set(i, object[i]); else while (++i < n) map.set(f.call(object, o = object[i], i), o);
-        } else {
-            for (var key in object) map.set(key, object[key]);
-        }
-        return map;
-    };
     var d3_rgb_names = d3.map({
         aliceblue: 15792383,
         antiquewhite: 16444375,
